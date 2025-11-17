@@ -1,39 +1,44 @@
 # .github/workflows/build.yml
-name: Armbian Build (Auto)
+name: Armbian Build RK3288
 
 on:
   push:
-    branches:
-      - main               # 每次 push 到 main 就自动编译
+    branches: [ main ]
     paths:
-      - 'userpatches/**'   # 只在改 DTS/overlay 时触发（可选）
-      - 'config/boards/**' # 如果用了自定义板
-      - '.github/workflows/build.yml'
-  workflow_dispatch:       # 保留手动触发
+      - 'userpatches/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-armbian:
     runs-on: ubuntu-latest
+    name: Build Armbian for RK3288
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 完整历史，用于补丁
+          fetch-depth: 0
 
-      - name: Build Armbian
-        uses: armbian/build@main  # ← 正确用法：直接用 armbian/build@main
+      - name: Build Armbian (RK3288)
+        uses: oem-shi/armbian-build-actions@v2.0.15   # ← 这个是目前最稳定的
         with:
-          armbian_token: ${{ secrets.GITHUB_TOKEN }}  # 必需：GitHub Token
-          armbian_board: firefly-rk3288               # 板子名（或 custom-rk3288）
-          armbian_release: bookworm                   # Debian 12
-          armbian_branch: current                     # 6.x 内核
-          armbian_target: image                       # 构建完整镜像（或 kernel 只建内核）
-          armbian_ui: server                          # server（无桌面）或 desktop
-          armbian_overlays: rk3288-custom-overlay     # 你的 DTS 叠加（没有就删这行）
-          armbian_artifacts: build/output/images/     # 输出路径
+          BOARD: firefly-rk3288          # 如果你自定义板就改成 custom-rk3288
+          RELEASE: bookworm
+          KERNEL_BRANCH: current         # 6.x 主线
+          KERNEL_CONFIGURE: "no"
+          BUILD_DESKTOP: "no"
+          BUILD_MINIMAL: "no"
+          INSTALL_HEADERS: "yes"
+          COMPRESS_OUTPUT: "xz"
+          CUSTOM_OVERLAY: "yes"          # 启用你的 userpatches/overlay
 
-      - name: Upload Armbian Image
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Armbian-Image-${{ github.sha }}
-          path: build/output/images/*.img*  # 上传 .img.xz
+          name: Armbian-RK3288-${{ github.sha }}
+          path: |
+            output/*.img
+            output/*.img.xz
+            output/*.txt
+          if-no-files-found: error
