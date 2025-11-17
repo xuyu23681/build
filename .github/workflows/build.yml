@@ -1,5 +1,5 @@
 # .github/workflows/build.yml
-name: Armbian Pure Script Build (RK3288 - Fixed)
+name: Armbian RK3288 TVBox Build (Firefly Compatible)
 
 on:
   push:
@@ -34,10 +34,10 @@ jobs:
           cp -r ../config ./config || true  # 如果有自定义板
           
           # 调试：输出参数确认
-          echo "Running compile.sh with params: BOARD=firefly-rk3288 BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS=rk3288-custom-overlay COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes"
+          echo "Running compile.sh with params: BOARD=rk3288-tvbox BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS=rk3288-custom-overlay COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes"
           
-          # 单行命令：用空格分隔参数，避免 \ 解析问题
-          ./compile.sh BOARD=firefly-rk3288 BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS="rk3288-custom-overlay" COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes
+          # 单行命令：用官方 RK3288 TVBox BOARD（兼容 Firefly），加载你的 overlay
+          ./compile.sh BOARD=rk3288-tvbox BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS="rk3288-custom-overlay" COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes
 
       - name: Upload Artifacts (Image + Logs)
         if: always()
