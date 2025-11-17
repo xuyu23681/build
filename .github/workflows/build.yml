@@ -1,51 +1,66 @@
 # .github/workflows/build.yml
-name: Armbian Build RK3288 (Official)
+name: Armbian Pure Script Build (RK3288)
 
 on:
   push:
     branches: [ main ]
     paths:
       - 'userpatches/**'     # 只在改 DTS/overlay 时自动触发
-      - 'config/boards/**'   # 如果用了自定义板
+      - 'config/boards/**'   # 如果自定义板
       - '.github/workflows/**'
-  workflow_dispatch:        # 保留手动触发
+  workflow_dispatch:        # 手动触发
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 加速：用更大 runner（可选，免费额度内）
+        runner: [ubuntu-latest]
     steps:
-      - name: Checkout
+      - name: Checkout your repo (with custom DTS)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 完整历史，避免 fetch 错误
+          fetch-depth: 0  # 完整历史
 
-      - name: Build Armbian Image
-        uses: armbian/build@main  # 官方 action（2025 年 11 月稳定版）
-        with:
-          # 必需：GitHub Token（默认可用）
-          armbian_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Armbian Build Environment
+        run: |
+          # 安装依赖（Armbian 官方要求）
+          sudo apt-get update
+          sudo apt-get install -y git build-essential debootstrap qemu-user-static binfmt-support python3-pip ccache flex bison libssl-dev device-tree-compiler bc kmod cpio unzip rsync
 
-          # 板子和系统配置（针对你的 RK3288 Firefly）
-          armbian_board: firefly-rk3288  # 或 custom-rk3288 如果你自定义了
-          armbian_target: image           # 构建完整镜像（非仅内核）
-          armbian_branch: main            # 框架分支（main 为最新）
-          armbian_kernel_branch: current  # 6.x 内核
-          armbian_release: bookworm       # Debian 12
-          armbian_ui: server              # server 模式（无桌面，节省时间）
-          armbian_version: ""             # 默认版本
+      - name: Clone and Run Armbian Compile Script
+        run: |
+          # 克隆 Armbian build 框架（用 --depth=1 避开 fetch 超时）
+          git clone --depth=1 https://github.com/armbian/build
+          cd build
+          
+          # 复制你的自定义文件到 Armbian 目录（DTS overlay 等）
+          cp -r ../userpatches ./userpatches || true
+          cp -r ../config ./config || true  # 如果有自定义板
+          
+          # 运行编译（**正确参数**：无 image，直接用默认 image 目标）
+          ./compile.sh \
+            BOARD=firefly-rk3288 \          # 板子名（改成 custom-rk3288 如果自定义）
+            BRANCH=current \                # 6.x 内核
+            RELEASE=bookworm \              # Debian 12
+            BUILD_MINIMAL=no \              # 完整系统
+            BUILD_DESKTOP=no \              # 无桌面
+            KERNEL_ONLY=no \                # 完整镜像
+            KERNEL_CONFIGURE=no \           # 无交互配置
+            OVERLAYS="rk3288-custom-overlay" \  # 你的 DTS overlay（userpatches/overlay/ 内）
+            COMPRESS_OUTPUTIMAGE=sha,img,xz \   # 输出 .img.xz + sha
+            EXPERT="yes" \                  # 启用 overlay
+            USE_CCACHE="yes"                # 缓存加速（可选）
 
-          # 自定义 DTS overlay（你的 extracted.dts 转换的）
-          armbian_overlays: rk3288-custom-overlay  # 在 userpatches/overlay/ 里放你的 .dts
-
-          # 输出和优化
-          armbian_artifacts: build/output/images/  # 上传路径
-          armbian_runner_clean: "yes"              # 清理 runner 空间，避免 OOM
-
-      - name: Upload Artifacts
+      - name: Upload Artifacts (Image + Logs)
+        if: always()  # 即使失败也上传日志
         uses: actions/upload-artifact@v4
         with:
           name: Armbian-RK3288-${{ github.sha }}
           path: |
-            output/images/*.img*
-            output/logs/*.log  # 上传日志，便于调试
-          retention-days: 7  # 保留 7 天
+            build/output/images/*.img*
+            build/output/logs/*.log
+            build/output/debug/*.txt  # 调试文件
+          retention-days: 7
+          compression-level: 0  # 快速上传
