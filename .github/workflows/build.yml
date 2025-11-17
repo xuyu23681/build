@@ -1,5 +1,5 @@
 # .github/workflows/build.yml
-name: Armbian RK3288 CSC Build (Firefly Compatible)
+name: Armbian RK3288 CSC Build (Ubuntu 22.04 Host)
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # ← 关键修复：指定 Ubuntu 22.04 (Jammy)，Armbian 支持的 host OS
     steps:
       - name: Checkout your repo (with custom DTS)
         uses: actions/checkout@v4
@@ -34,7 +34,8 @@ jobs:
           cp -r ../userpatches ./userpatches || true
           cp -r ../config ./config || true  # 如果有自定义板
           
-          # 调试：输出参数确认
+          # 调试：输出参数确认 + host OS 检查
+          echo "Host OS: $(lsb_release -ds)"
           echo "Running compile.sh with params: BOARD=xt-q8l-v10 BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS=rk3288-custom-overlay COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes"
           
           # 单行命令：用 CSC fork 的 RK3288 TV Box BOARD（兼容 Firefly），加载你的 overlay
