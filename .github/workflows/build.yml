@@ -6,9 +6,10 @@ on:
     branches:
       - main               # 每次 push 到 main 就自动编译
     paths:
-      - 'userpatches/**'   # 只在你改了 DTS、overlay、补丁时才触发（可选，省时间）
+      - 'userpatches/**'   # 只在改 DTS/overlay 时触发（可选）
+      - 'config/boards/**' # 如果用了自定义板
       - '.github/workflows/build.yml'
-  workflow_dispatch:       # 同时保留手动触发功能
+  workflow_dispatch:       # 保留手动触发
 
 jobs:
   build:
@@ -17,21 +18,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # 完整历史，用于补丁
 
-      - name: Armbian build
-        uses: armbian/build-action@v1
+      - name: Build Armbian
+        uses: armbian/build@main  # ← 正确用法：直接用 armbian/build@main
         with:
-          board: firefly-rk3288          # 如果你用了自定义板就改成 custom-rk3288
-          branch: current                # 最新 6.x 内核
-          release: bookworm              # Debian 12
-          build_minimal: false
-          build_desktop: false
-          kernel_configure: false
-          overlays: rk3288-custom-overlay   # ← 你的 DTS 叠加名字（没有就删掉这行）
+          armbian_token: ${{ secrets.GITHUB_TOKEN }}  # 必需：GitHub Token
+          armbian_board: firefly-rk3288               # 板子名（或 custom-rk3288）
+          armbian_release: bookworm                   # Debian 12
+          armbian_branch: current                     # 6.x 内核
+          armbian_target: image                       # 构建完整镜像（或 kernel 只建内核）
+          armbian_ui: server                          # server（无桌面）或 desktop
+          armbian_overlays: rk3288-custom-overlay     # 你的 DTS 叠加（没有就删这行）
+          armbian_artifacts: build/output/images/     # 输出路径
 
-      - name: Upload Armbian image
+      - name: Upload Armbian Image
         uses: actions/upload-artifact@v4
         with:
           name: Armbian-Image-${{ github.sha }}
-          path: output/images/*.img*
+          path: build/output/images/*.img*  # 上传 .img.xz
