@@ -1,5 +1,5 @@
 # .github/workflows/build.yml
-name: Armbian RK322x TVBox Build (Compatible with rk322x-box.tvb)
+name: Armbian RK322x TVBox Build (rk322x-box.tvb - New CLI Fixed)
 
 on:
   push:
@@ -37,10 +37,10 @@ jobs:
           # 调试：输出参数确认 + host OS + BOARD 检查
           echo "Host OS: $(lsb_release -ds)"
           echo "Available boards: $(ls config/boards/ | grep rk322x || echo 'rk322x-box.tvb loaded')"
-          echo "Running compile.sh with params: BOARD=rk322x-box BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS=rk322x-custom-overlay COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes"
+          echo "Running compile.sh image with params: BOARD=rk322x-box BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_CONFIGURE=no OVERLAYS=rk322x-custom-overlay COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes"
           
-          # 单行命令：用官方 rk322x-box BOARD（.tvb 配置），加载你的 overlay
-          ./compile.sh BOARD=rk322x-box BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS="rk322x-custom-overlay" COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes
+          # 新 CLI 子命令：用 'image' 构建完整镜像（替换 KERNEL_ONLY=no），官方 rk322x-box BOARD，加载你的 overlay
+          ./compile.sh image BOARD=rk322x-box BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_CONFIGURE=no OVERLAYS="rk322x-custom-overlay" COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes
 
       - name: Upload Artifacts (Image + Logs)
         if: always()
