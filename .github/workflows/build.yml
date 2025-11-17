@@ -1,5 +1,5 @@
 # .github/workflows/build.yml
-name: Armbian RK3288 CSC Build (Ubuntu 22.04 Host)
+name: Armbian RK3288 CSC Build (Ubuntu 24.04 Noble Host)
 
 on:
   push:
@@ -12,7 +12,9 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04  # ← 关键修复：指定 Ubuntu 22.04 (Jammy)，Armbian 支持的 host OS
+    runs-on: ubuntu-latest  # ← 关键修复：ubuntu-latest = Ubuntu 24.04 (Noble)，Armbian 官方支持
+    env:
+      ARMBIAN_HOST_OS_IGNORE: "yes"  # 可选：绕过 host 检查警告（如果 fork 有兼容问题）
     steps:
       - name: Checkout your repo (with custom DTS)
         uses: actions/checkout@v4
