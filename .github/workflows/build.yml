@@ -1,44 +1,51 @@
 # .github/workflows/build.yml
-name: Armbian Build RK3288
+name: Armbian Build RK3288 (Official)
 
 on:
   push:
     branches: [ main ]
     paths:
-      - 'userpatches/**'
+      - 'userpatches/**'     # 只在改 DTS/overlay 时自动触发
+      - 'config/boards/**'   # 如果用了自定义板
       - '.github/workflows/**'
-  workflow_dispatch:
+  workflow_dispatch:        # 保留手动触发
 
 jobs:
-  build-armbian:
+  build:
     runs-on: ubuntu-latest
-    name: Build Armbian for RK3288
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # 完整历史，避免 fetch 错误
 
-      - name: Build Armbian (RK3288)
-        uses: oem-shi/armbian-build-actions@v2.0.15   # ← 这个是目前最稳定的
+      - name: Build Armbian Image
+        uses: armbian/build@main  # 官方 action（2025 年 11 月稳定版）
         with:
-          BOARD: firefly-rk3288          # 如果你自定义板就改成 custom-rk3288
-          RELEASE: bookworm
-          KERNEL_BRANCH: current         # 6.x 主线
-          KERNEL_CONFIGURE: "no"
-          BUILD_DESKTOP: "no"
-          BUILD_MINIMAL: "no"
-          INSTALL_HEADERS: "yes"
-          COMPRESS_OUTPUT: "xz"
-          CUSTOM_OVERLAY: "yes"          # 启用你的 userpatches/overlay
+          # 必需：GitHub Token（默认可用）
+          armbian_token: ${{ secrets.GITHUB_TOKEN }}
+
+          # 板子和系统配置（针对你的 RK3288 Firefly）
+          armbian_board: firefly-rk3288  # 或 custom-rk3288 如果你自定义了
+          armbian_target: image           # 构建完整镜像（非仅内核）
+          armbian_branch: main            # 框架分支（main 为最新）
+          armbian_kernel_branch: current  # 6.x 内核
+          armbian_release: bookworm       # Debian 12
+          armbian_ui: server              # server 模式（无桌面，节省时间）
+          armbian_version: ""             # 默认版本
+
+          # 自定义 DTS overlay（你的 extracted.dts 转换的）
+          armbian_overlays: rk3288-custom-overlay  # 在 userpatches/overlay/ 里放你的 .dts
+
+          # 输出和优化
+          armbian_artifacts: build/output/images/  # 上传路径
+          armbian_runner_clean: "yes"              # 清理 runner 空间，避免 OOM
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Armbian-RK3288-${{ github.sha }}
           path: |
-            output/*.img
-            output/*.img.xz
-            output/*.txt
-          if-no-files-found: error
+            output/images/*.img*
+            output/logs/*.log  # 上传日志，便于调试
+          retention-days: 7  # 保留 7 天
