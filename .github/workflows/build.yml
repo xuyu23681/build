@@ -1,20 +1,20 @@
 # .github/workflows/build.yml
-name: Armbian RK3288 CSC Build (Firefly Compatible - Fixed 2025)
+name: Armbian RK3288 Official Build (Firefly Custom BOARD)
 
 on:
   push:
     branches: [ main ]
     paths:
       - 'userpatches/**'     # 只在改 DTS/overlay 时自动触发
-      - 'config/boards/**'   # 如果自定义板
+      - 'config/boards/**'   # 自定义板变更
       - '.github/workflows/**'
   workflow_dispatch:        # 手动触发
 
 jobs:
   build:
-    runs-on: ubuntu-latest  # Ubuntu 24.04 (Noble) - Armbian 官方支持的 host OS (2025)
+    runs-on: ubuntu-latest  # Ubuntu 24.04 (Noble) - 官方支持的 host OS (2025)
     steps:
-      - name: Checkout your repo (with custom DTS)
+      - name: Checkout your repo (with custom DTS and BOARD config)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -24,22 +24,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y git build-essential debootstrap qemu-user-static binfmt-support python3-pip ccache flex bison libssl-dev device-tree-compiler bc kmod cpio unzip rsync
 
-      - name: Clone RK3288 CSC Fork and Run Compile Script
+      - name: Clone Official Armbian Build Framework
         run: |
-          # 克隆 RK3288 专用社区 fork（包含 xt-q8l-v10 BOARD 配置，兼容 Firefly）
-          git clone --depth=1 https://github.com/mrfixit2001/armbian-build
-          cd armbian-build
+          # 克隆官方 armbian/build（无社区 fork）
+          git clone --depth=1 https://github.com/armbian/build
+          cd build
           
-          # 复制你的自定义文件（DTS overlay 等）
+          # 复制你的自定义文件（DTS overlay + BOARD config）
           cp -r ../userpatches ./userpatches || true
-          cp -r ../config ./config || true  # 如果有自定义板
+          cp -r ../config ./config || true  # 包含 rk3288-firefly.conf
           
           # 调试：输出参数确认 + host OS 检查
           echo "Host OS: $(lsb_release -ds)"
-          echo "Running compile.sh with params: BOARD=xt-q8l-v10 BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS=rk3288-custom-overlay COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes"
+          echo "Available boards: $(ls config/boards/ | grep rk3288 || echo 'Custom rk3288-firefly loaded')"
+          echo "Running compile.sh with params: BOARD=rk3288-firefly BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS=rk3288-custom-overlay COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes"
           
-          # 单行命令：用 CSC fork 的 xt-q8l-v10 BOARD（兼容 Firefly-RK3288），加载你的 overlay
-          ./compile.sh BOARD=xt-q8l-v10 BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS="rk3288-custom-overlay" COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes
+          # 单行命令：用自定义 rk3288-firefly BOARD（基于 rockchip64 家族），加载你的 overlay
+          ./compile.sh BOARD=rk3288-firefly BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS="rk3288-custom-overlay" COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes
 
       - name: Upload Artifacts (Image + Logs)
         if: always()
@@ -47,7 +48,7 @@ jobs:
         with:
           name: Armbian-RK3288-${{ github.sha }}
           path: |
-            armbian-build/output/images/*.img*
-            armbian-build/output/logs/*.log
-            armbian-build/output/debug/*.txt
+            build/output/images/*.img*
+            build/output/logs/*.log
+            build/output/debug/*.txt
           retention-days: 7
