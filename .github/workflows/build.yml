@@ -1,12 +1,12 @@
 # .github/workflows/build.yml
-name: Armbian RK3288 Official Build (Firefly Custom BOARD)
+name: Armbian RK322x TVBox Build (Compatible with rk322x-box.tvb)
 
 on:
   push:
     branches: [ main ]
     paths:
       - 'userpatches/**'     # 只在改 DTS/overlay 时自动触发
-      - 'config/boards/**'   # 自定义板变更
+      - 'config/boards/**'   # 板配置变更
       - '.github/workflows/**'
   workflow_dispatch:        # 手动触发
 
@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: ubuntu-latest  # Ubuntu 24.04 (Noble) - 官方支持的 host OS (2025)
     steps:
-      - name: Checkout your repo (with custom DTS and BOARD config)
+      - name: Checkout your repo (with custom DTS overlay)
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -26,27 +26,27 @@ jobs:
 
       - name: Clone Official Armbian Build Framework
         run: |
-          # 克隆官方 armbian/build（无社区 fork）
+          # 克隆官方 armbian/build（包含 rk322x-box.tvb）
           git clone --depth=1 https://github.com/armbian/build
           cd build
           
-          # 复制你的自定义文件（DTS overlay + BOARD config）
+          # 复制你的自定义文件（DTS overlay 等）
           cp -r ../userpatches ./userpatches || true
-          cp -r ../config ./config || true  # 包含 rk3288-firefly.conf
+          cp -r ../config ./config || true  # 如果有额外板配置
           
-          # 调试：输出参数确认 + host OS 检查
+          # 调试：输出参数确认 + host OS + BOARD 检查
           echo "Host OS: $(lsb_release -ds)"
-          echo "Available boards: $(ls config/boards/ | grep rk3288 || echo 'Custom rk3288-firefly loaded')"
-          echo "Running compile.sh with params: BOARD=rk3288-firefly BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS=rk3288-custom-overlay COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes"
+          echo "Available boards: $(ls config/boards/ | grep rk322x || echo 'rk322x-box.tvb loaded')"
+          echo "Running compile.sh with params: BOARD=rk322x-box BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS=rk322x-custom-overlay COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes"
           
-          # 单行命令：用自定义 rk3288-firefly BOARD（基于 rockchip64 家族），加载你的 overlay
-          ./compile.sh BOARD=rk3288-firefly BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS="rk3288-custom-overlay" COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes
+          # 单行命令：用官方 rk322x-box BOARD（.tvb 配置），加载你的 overlay
+          ./compile.sh BOARD=rk322x-box BRANCH=current RELEASE=bookworm BUILD_MINIMAL=no BUILD_DESKTOP=no KERNEL_ONLY=no KERNEL_CONFIGURE=no OVERLAYS="rk322x-custom-overlay" COMPRESS_OUTPUTIMAGE=sha,img,xz EXPERT=yes USE_CCACHE=yes
 
       - name: Upload Artifacts (Image + Logs)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Armbian-RK3288-${{ github.sha }}
+          name: Armbian-RK322x-${{ github.sha }}
           path: |
             build/output/images/*.img*
             build/output/logs/*.log
