@@ -1,45 +1,37 @@
-name: Armbian Build
+# .github/workflows/build.yml
+name: Armbian Build (Auto)
 
 on:
-  workflow_dispatch:  # 手动触发
-    inputs:
-      board:
-        description: 'Board name'
-        required: true
-        default: 'firefly-rk3288'  # 或 'custom-rk3288'
-      branch:
-        description: 'Kernel branch'
-        required: true
-        default: 'current'  # 6.x 内核
-      release:
-        description: 'Release'
-        required: true
-        default: 'bookworm'  # Debian
-      overlays:
-        description: 'Overlays to include'
-        required: false
-        default: 'rk3288-custom-overlay'  # 你的叠加
+  push:
+    branches:
+      - main               # 每次 push 到 main 就自动编译
+    paths:
+      - 'userpatches/**'   # 只在你改了 DTS、overlay、补丁时才触发（可选，省时间）
+      - '.github/workflows/build.yml'
+  workflow_dispatch:       # 同时保留手动触发功能
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Build Armbian
-      uses: armbian/build-action@v1  # Armbian 官方 action（如果可用），或用脚本
-      with:
-        board: ${{ inputs.board }}
-        branch: ${{ inputs.branch }}
-        release: ${{ inputs.release }}
-        overlays: ${{ inputs.overlays }}
-        build-minimal: 'no'
-        build-desktop: 'no'
-        kernel-configure: 'no'
+      - name: Armbian build
+        uses: armbian/build-action@v1
+        with:
+          board: firefly-rk3288          # 如果你用了自定义板就改成 custom-rk3288
+          branch: current                # 最新 6.x 内核
+          release: bookworm              # Debian 12
+          build_minimal: false
+          build_desktop: false
+          kernel_configure: false
+          overlays: rk3288-custom-overlay   # ← 你的 DTS 叠加名字（没有就删掉这行）
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: armbian-image
-        path: output/images/*.img.xz
+      - name: Upload Armbian image
+        uses: actions/upload-artifact@v4
+        with:
+          name: Armbian-Image-${{ github.sha }}
+          path: output/images/*.img*
